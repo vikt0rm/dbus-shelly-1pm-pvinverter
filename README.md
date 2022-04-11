@@ -1,17 +1,22 @@
-# dbus-shelly-1pm-pvinverter
-Integrate Shelly 1PM into Victron Energies Venus OS
+# dbus-shelly-em-smartmeter
+Integrate Shelly EM into Victron Energies Venus OS
 
 ## Purpose
-With the scripts in this repo it should be easy possible to install, uninstall, restart a service that connects the Shelly 1PM to the VenusOS and GX devices from Victron.
-Idea is inspired on @fabian-lauer project linked below.
+With the scripts in this repo it should be easy possible to install, uninstall, restart a service that connects the Shelly EM to the VenusOS and GX devices from Victron.
+Idea is inspired on @fabian-lauer & vikt0rm projects linked below.
 
 
 
 ## Inspiration
-This project is my first on GitHub and with the Victron Venus OS, so I took some ideas and approaches from the following projects - many thanks for sharing the knowledge:
+This is my first project with the Victron Venus OS on GitHub, so I took some ideas and approaches from the following projects - many thanks for sharing the knowledge:
 - https://github.com/fabian-lauer/dbus-shelly-3em-smartmeter
+- https://github.com/vikt0rm/dbus-shelly-1pm-pvinverter
 - https://shelly-api-docs.shelly.cloud/gen1/#shelly1-shelly1pm
 - https://github.com/victronenergy/venus/wiki/dbus#pv-inverters
+
+
+
+------------------------------------ Update below needed ----------------------------------------------------
 
 ## How it works
 ### My setup
