@@ -20,7 +20,7 @@ sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/d
 from vedbus import VeDbusService
 
 
-class DbusShelly1pmService:
+class DbusShellyemService:
   def __init__(self, servicename, paths, productname='Shelly EM', connection='Shelly EM HTTP JSON service'):
     config = self._getConfig()
     deviceinstance = int(config['DEFAULT']['Deviceinstance'])
@@ -39,18 +39,20 @@ class DbusShelly1pmService:
     # Create the mandatory objects
     self._dbusservice.add_path('/DeviceInstance', deviceinstance)
     #self._dbusservice.add_path('/ProductId', 16) # value used in ac_sensor_bridge.cpp of dbus-cgwacs
-    self._dbusservice.add_path('/ProductId', 0xFFFF) # id assigned by Victron Support from SDM630v2.py
+    #self._dbusservice.add_path('/ProductId', 0xFFFF) # id assigned by Victron Support from SDM630v2.py
+    #self._dbusservice.add_path('/ProductId', 45069) # found on https://www.sascha-curth.de/projekte/005_Color_Control_GX.html#experiment - should be an ET340 Engerie Meter
+    self._dbusservice.add_path('/ProductId', 0xB023) # id needs to be assigned by Victron Support current value for testing
+    self._dbusservice.add_path('/DeviceType', 345) # found on https://www.sascha-curth.de/projekte/005_Color_Control_GX.html#experiment - should be an ET340 Engerie Meter
     self._dbusservice.add_path('/ProductName', productname)
     self._dbusservice.add_path('/CustomName', customname)    
-    self._dbusservice.add_path('/Connected', 1)
-    
     self._dbusservice.add_path('/Latency', None)    
     self._dbusservice.add_path('/FirmwareVersion', 0.1)
     self._dbusservice.add_path('/HardwareVersion', 0)
+    self._dbusservice.add_path('/Connected', 1)
+    self._dbusservice.add_path('/Role', 'grid')
     self._dbusservice.add_path('/Position', 0) # normaly only needed for pvinverter
     self._dbusservice.add_path('/Serial', self._getShellySerial())
     self._dbusservice.add_path('/UpdateIndex', 0)
-    self._dbusservice.add_path('/StatusCode', 0)  # Dummy path so VRM detects us as a PV-inverter.
     
     # add path values to dbus
     for path, settings in self._paths.items():
@@ -111,7 +113,7 @@ class DbusShelly1pmService:
     
     # check for response
     if not meter_r:
-        raise ConnectionError("No response from Shelly 1PM - %s" % (URL))
+        raise ConnectionError("No response from Shelly EM - %s" % (URL))
     
     meter_data = meter_r.json()     
     
@@ -132,41 +134,44 @@ class DbusShelly1pmService:
  
   def _update(self):   
     try:
-       #get data from Shelly 1pm
+       #get data from Shelly em
        meter_data = self._getShellyData()
-       
-       config = self._getConfig()
-       str(config['DEFAULT']['Phase'])
-    
-       pvinverter_phase = str(config['DEFAULT']['Phase'])
+      
+      
        
        #send data to DBus
-       for phase in ['L1', 'L2', 'L3']:
-         pre = '/Ac/' + phase
-         
-         if phase == pvinverter_phase:
-           power = meter_data['meters'][0]['power']
-           total = meter_data['meters'][0]['total']
-           voltage = 230
-           current = power / voltage
-           
-           self._dbusservice[pre + '/Voltage'] = voltage
-           self._dbusservice[pre + '/Current'] = current
-           self._dbusservice[pre + '/Power'] = power
-           self._dbusservice[pre + '/Energy/Forward'] = total/1000/60 if power > 0 else 0 
-           
-         else:
-           self._dbusservice[pre + '/Voltage'] = 0
-           self._dbusservice[pre + '/Current'] = 0
-           self._dbusservice[pre + '/Power'] = 0
-           self._dbusservice[pre + '/Energy/Forward'] = 0
-           
-       self._dbusservice['/Ac/Power'] = self._dbusservice['/Ac/' + pvinverter_phase + '/Power']
-       self._dbusservice['/Ac/Energy/Forward'] = self._dbusservice['/Ac/' + pvinverter_phase + '/Energy/Forward']
+       self._dbusservice['/Ac/L1/Voltage'] = meter_data['emeters'][0]['voltage']
+ 
+       current = meter_data['emeters'][0]['power'] / meter_data['emeters'][0]['voltage']
+       self._dbusservice['/Ac/L1/Current'] = current
        
+       self._dbusservice['/Ac/L1/Power'] = meter_data['emeters'][0]['power']
+       self._dbusservice['/Ac/L1/Energy/Forward'] = (meter_data['emeters'][0]['total']/1000)
+       self._dbusservice['/Ac/L1/Energy/Reverse'] = (meter_data['emeters'][0]['total_returned']/1000)    
+       
+        
+       #self._dbusservice['/Ac/Power'] = meter_data['total_power'] # positive: consumption, negative: feed into grid
+       #self._dbusservice['/Ac/L2/Voltage'] = meter_data['emeters'][1]['voltage']
+       #self._dbusservice['/Ac/L2/Current'] = meter_data['emeters'][1]['current']
+       #self._dbusservice['/Ac/L2/Power'] = meter_data['emeters'][1]['power']
+       #self._dbusservice['/Ac/L2/Energy/Forward'] = (meter_data['emeters'][1]['total']/1000)
+       #self._dbusservice['/Ac/L2/Energy/Reverse'] = (meter_data['emeters'][1]['total_returned']/1000) 
+
+       #self._dbusservice['/Ac/L3/Voltage'] = meter_data['emeters'][2]['voltage']
+       #self._dbusservice['/Ac/L3/Current'] = meter_data['emeters'][2]['current']
+       #self._dbusservice['/Ac/L3/Power'] = meter_data['emeters'][2]['power']
+       #self._dbusservice['/Ac/L3/Energy/Forward'] = (meter_data['emeters'][2]['total']/1000)
+       #self._dbusservice['/Ac/L3/Energy/Reverse'] = (meter_data['emeters'][2]['total_returned']/1000) 
+
+       self._dbusservice['/Ac/Energy/Forward'] = self._dbusservice['/Ac/L1/Energy/Forward']
+       #+ self._dbusservice['/Ac/L2/Energy/Forward'] + self._dbusservice['/Ac/L3/Energy/Forward']
+       self._dbusservice['/Ac/Energy/Reverse'] = self._dbusservice['/Ac/L1/Energy/Reverse'] 
+       #+ self._dbusservice['/Ac/L2/Energy/Reverse'] + self._dbusservice['/Ac/L3/Energy/Reverse'] 
+          
        #logging
        logging.debug("House Consumption (/Ac/Power): %s" % (self._dbusservice['/Ac/Power']))
        logging.debug("House Forward (/Ac/Energy/Forward): %s" % (self._dbusservice['/Ac/Energy/Forward']))
+       logging.debug("House Reverse (/Ac/Energy/Revers): %s" % (self._dbusservice['/Ac/Energy/Reverse']))
        logging.debug("---");
        
        # increment UpdateIndex - to show that new data is available
@@ -213,27 +218,31 @@ def main():
       _v = lambda p, v: (str(round(v, 1)) + 'V')   
      
       #start our main-service
-      pvac_output = DbusShelly1pmService(
-        servicename='com.victronenergy.pvinverter',
+      pvac_output = DbusShellyemService(
+        servicename='com.victronenergy.grid',
         paths={
-          '/Ac/Energy/Forward': {'initial': 0, 'textformat': _kwh}, # energy produced by pv inverter
+          '/Ac/Energy/Forward': {'initial': 0, 'textformat': _kwh}, # energy bought from the grid
+          '/Ac/Energy/Reverse': {'initial': 0, 'textformat': _kwh}, # energy sold to the grid
           '/Ac/Power': {'initial': 0, 'textformat': _w},
           
           '/Ac/Current': {'initial': 0, 'textformat': _a},
           '/Ac/Voltage': {'initial': 0, 'textformat': _v},
           
           '/Ac/L1/Voltage': {'initial': 0, 'textformat': _v},
-          '/Ac/L2/Voltage': {'initial': 0, 'textformat': _v},
-          '/Ac/L3/Voltage': {'initial': 0, 'textformat': _v},
+          #'/Ac/L2/Voltage': {'initial': 0, 'textformat': _v},
+          #'/Ac/L3/Voltage': {'initial': 0, 'textformat': _v},
           '/Ac/L1/Current': {'initial': 0, 'textformat': _a},
-          '/Ac/L2/Current': {'initial': 0, 'textformat': _a},
-          '/Ac/L3/Current': {'initial': 0, 'textformat': _a},
+          #'/Ac/L2/Current': {'initial': 0, 'textformat': _a},
+          #'/Ac/L3/Current': {'initial': 0, 'textformat': _a},
           '/Ac/L1/Power': {'initial': 0, 'textformat': _w},
-          '/Ac/L2/Power': {'initial': 0, 'textformat': _w},
-          '/Ac/L3/Power': {'initial': 0, 'textformat': _w},
+          #'/Ac/L2/Power': {'initial': 0, 'textformat': _w},
+          #'/Ac/L3/Power': {'initial': 0, 'textformat': _w},
           '/Ac/L1/Energy/Forward': {'initial': 0, 'textformat': _kwh},
-          '/Ac/L2/Energy/Forward': {'initial': 0, 'textformat': _kwh},
-          '/Ac/L3/Energy/Forward': {'initial': 0, 'textformat': _kwh},
+          #'/Ac/L2/Energy/Forward': {'initial': 0, 'textformat': _kwh},
+          #'/Ac/L3/Energy/Forward': {'initial': 0, 'textformat': _kwh},
+          '/Ac/L1/Energy/Reverse': {'initial': 0, 'textformat': _kwh},
+          #'/Ac/L2/Energy/Reverse': {'initial': 0, 'textformat': _kwh},
+          #'/Ac/L3/Energy/Reverse': {'initial': 0, 'textformat': _kwh},
         })
      
       logging.info('Connected to dbus, and switching over to gobject.MainLoop() (= event based)')
