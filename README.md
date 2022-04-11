@@ -11,8 +11,8 @@ Idea is inspired on @fabian-lauer & @vikt0rm projects linked below.
 This is my first project with the Victron Venus OS on GitHub, so I took some ideas and approaches from the following projects - many thanks for sharing the knowledge:
 - https://github.com/fabian-lauer/dbus-shelly-3em-smartmeter
 - https://github.com/vikt0rm/dbus-shelly-1pm-pvinverter
-- https://shelly-api-docs.shelly.cloud/gen1/#shelly1-shelly1pm
-- https://github.com/victronenergy/venus/wiki/dbus#pv-inverters
+- https://shelly-api-docs.shelly.cloud/gen1/#shelly-em
+- https://github.com/victronenergy/venus/wiki/dbus#grid-and-genset-meter
 
 
 
