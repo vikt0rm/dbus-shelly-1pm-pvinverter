@@ -3,7 +3,7 @@ Integrate Shelly EM into Victron Energies Venus OS
 
 ## Purpose
 With the scripts in this repo it should be easy possible to install, uninstall, restart a service that connects the Shelly EM to the VenusOS and GX devices from Victron.
-Idea is inspired on @fabian-lauer & vikt0rm projects linked below.
+Idea is inspired on @fabian-lauer & @vikt0rm projects linked below.
 
 
 
