@@ -182,13 +182,13 @@ class DbusShelly1pmService:
        #update lastupdate vars
        self._lastUpdate = time.time()              
     except Exception as e:
-       self.logger.critical('Error at %s', '_update', exc_info=e)
+       self._logger.critical('Error at %s', '_update', exc_info=e)
        
     # return true, otherwise add_timeout will be removed from GObject - see docs http://library.isr.ist.utl.pt/docs/pygtk2reference/gobject-functions.html#function-gobject--timeout-add
     return True
  
   def _handlechangedvalue(self, path, value):
-    self.logger.debug("someone else updated %s to %s" % (path, value))
+    self._logger.debug("someone else updated %s to %s" % (path, value))
     return True # accept the change
  
 
