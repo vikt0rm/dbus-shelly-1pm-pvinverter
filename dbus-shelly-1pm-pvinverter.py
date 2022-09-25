@@ -14,6 +14,8 @@ import sys
 import time
 import requests # for http GET
 import configparser # for config/ini file
+
+from logging.handlers import TimedRotatingFileHandler
  
 # our own packages from victron
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
@@ -21,15 +23,16 @@ from vedbus import VeDbusService
 
 
 class DbusShelly1pmService:
-  def __init__(self, servicename, paths, productname='Shelly 1PM', connection='Shelly 1PM HTTP JSON service'):
+  def __init__(self, logger, servicename, paths, productname='Shelly 1PM', connection='Shelly 1PM HTTP JSON service'):
     config = self._getConfig()
     deviceinstance = int(config['DEFAULT']['Deviceinstance'])
     customname = config['DEFAULT']['CustomName']
     
     self._dbusservice = VeDbusService("{}.http_{:02d}".format(servicename, deviceinstance))
     self._paths = paths
+    self._logger = logger
     
-    logging.debug("%s /DeviceInstance = %d" % (servicename, deviceinstance))
+    self._logger.debug("%s /DeviceInstance = %d" % (servicename, deviceinstance))
     
     # Create the management objects, as specified in the ccgx dbus-api document
     self._dbusservice.add_path('/Mgmt/ProcessName', __file__)
@@ -124,10 +127,10 @@ class DbusShelly1pmService:
  
  
   def _signOfLife(self):
-    logging.info("--- Start: sign of life ---")
-    logging.info("Last _update() call: %s" % (self._lastUpdate))
-    logging.info("Last '/Ac/Power': %s" % (self._dbusservice['/Ac/Power']))
-    logging.info("--- End: sign of life ---")
+    self._logger.info("--- Start: sign of life ---")
+    self._logger.info("Last _update() call: %s" % (self._lastUpdate))
+    self._logger.info("Last '/Ac/Power': %s" % (self._dbusservice['/Ac/Power']))
+    self._logger.info("--- End: sign of life ---")
     return True
  
   def _update(self):   
@@ -166,9 +169,9 @@ class DbusShelly1pmService:
        self._dbusservice['/Ac/Energy/Forward'] = self._dbusservice['/Ac/' + pvinverter_phase + '/Energy/Forward']
        
        #logging
-       logging.debug("House Consumption (/Ac/Power): %s" % (self._dbusservice['/Ac/Power']))
-       logging.debug("House Forward (/Ac/Energy/Forward): %s" % (self._dbusservice['/Ac/Energy/Forward']))
-       logging.debug("---");
+       self._logger.debug("House Consumption (/Ac/Power): %s" % (self._dbusservice['/Ac/Power']))
+       self._logger.debug("House Forward (/Ac/Energy/Forward): %s" % (self._dbusservice['/Ac/Energy/Forward']))
+       self._logger.debug("---");
        
        # increment UpdateIndex - to show that new data is available
        index = self._dbusservice['/UpdateIndex'] + 1  # increment index
@@ -179,29 +182,37 @@ class DbusShelly1pmService:
        #update lastupdate vars
        self._lastUpdate = time.time()              
     except Exception as e:
-       logging.critical('Error at %s', '_update', exc_info=e)
+       self._logger.critical('Error at %s', '_update', exc_info=e)
        
     # return true, otherwise add_timeout will be removed from GObject - see docs http://library.isr.ist.utl.pt/docs/pygtk2reference/gobject-functions.html#function-gobject--timeout-add
     return True
  
   def _handlechangedvalue(self, path, value):
-    logging.debug("someone else updated %s to %s" % (path, value))
+    self._logger.debug("someone else updated %s to %s" % (path, value))
     return True # accept the change
  
 
-
 def main():
   #configure logging
-  logging.basicConfig(      format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                            datefmt='%Y-%m-%d %H:%M:%S',
-                            level=logging.INFO,
-                            handlers=[
-                                logging.FileHandler("%s/current.log" % (os.path.dirname(os.path.realpath(__file__)))),
-                                logging.StreamHandler()
-                            ])
+#  logger.basicConfig(      format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+#                            datefmt='%Y-%m-%d %H:%M:%S',
+#                            level=logging.INFO,
+#                            handlers=[
+#                                logging.FileHandler("%s/current.log" % (os.path.dirname(os.path.realpath(__file__)))),
+#                                logging.StreamHandler()
+#                            ])
+
+  logger = logging.getLogger("Rotating Log")
+  logger.setLevel(logging.INFO)
+
+  handler = TimedRotatingFileHandler("%s/current.log" % (os.path.dirname(os.path.realpath(__file__))),
+                                     when="d",
+                                     interval=1,
+                                     backupCount=7)
+  logger.addHandler(handler)
  
   try:
-      logging.info("Start");
+      logger.info("Start");
   
       from dbus.mainloop.glib import DBusGMainLoop
       # Have a mainloop, so we can send/receive asynchronous calls to and from dbus
@@ -214,7 +225,7 @@ def main():
       _v = lambda p, v: (str(round(v, 1)) + 'V')   
      
       #start our main-service
-      pvac_output = DbusShelly1pmService(
+      pvac_output = DbusShelly1pmService(logger,
         servicename='com.victronenergy.pvinverter',
         paths={
           '/Ac/Energy/Forward': {'initial': None, 'textformat': _kwh}, # energy produced by pv inverter
@@ -237,10 +248,10 @@ def main():
           '/Ac/L3/Energy/Forward': {'initial': None, 'textformat': _kwh},
         })
      
-      logging.info('Connected to dbus, and switching over to gobject.MainLoop() (= event based)')
+      logger.info('Connected to dbus, and switching over to gobject.MainLoop() (= event based)')
       mainloop = gobject.MainLoop()
       mainloop.run()            
   except Exception as e:
-    logging.critical('Error at %s', 'main', exc_info=e)
+    logger.critical('Error at %s', 'main', exc_info=e)
 if __name__ == "__main__":
   main()
