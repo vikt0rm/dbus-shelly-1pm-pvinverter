@@ -61,7 +61,11 @@ class DbusShelly1pmService:
     self._lastUpdate = 0
 
     # add _update function 'timer'
-    gobject.timeout_add(250, self._update) # pause 250ms before the next request
+    refreshRate = int(config['DEFAULT']['RefreshRate'])
+    MIN_REFRESH_RATE = 250
+    if not refreshRate or refreshRate < MIN_REFRESH_RATE:
+        refreshRate = MIN_REFRESH_RATE
+    gobject.timeout_add(refreshRate, self._update) # pause at least 250ms before the next request
 
     # add _signOfLife 'timer' to get feedback in log every 5minutes
     gobject.timeout_add(self._getSignOfLifeInterval()*60*1000, self._signOfLife)
